@@ -10,30 +10,10 @@ import (
 	"github.com/anaskhan96/soup"
 )
 
-type Search struct {
-	Name string
-	ASNs []*ASN
-}
-
-func NewSearch(name string) *Search {
-	s := &Search{
-		Name: name,
-		ASNs: []*ASN{},
-	}
-	for asn := range search(s.Name) {
-		s.ASNs = append(s.ASNs, asn)
-	}
-	return s
-}
-
-func (c *Search) String() string {
-	return fmt.Sprintf("%s: %v", c.Name, c.ASNs)
-}
-
 type ASN struct {
-	Number       int
-	IPv4Networks []string
-	IPv6Networks []string
+	Number       int      `json:"number" bson:"number"`
+	IPv4Networks []string `json:"ipv4_networks" bson:"ipv4_networks"`
+	IPv6Networks []string `json:"ipv6_networks" bson:"ipv6_networks"`
 }
 
 func (a *ASN) String() string {
@@ -76,30 +56,24 @@ func NewASN(number int) (*ASN, error) {
 	return asn, nil
 }
 
-func parseASN(url string) chan int {
-	out := make(chan int)
-	go func() {
-		defer close(out)
-		resp, err := soup.Get(url)
-		if err != nil {
-			slog.Error("Failed to fetch URL: %s", err)
-			return
-		}
-		doc := soup.HTMLParse(resp)
-		links := doc.Find("div", "id", "search").FindAll("a")
-		for _, link := range links {
-			if strings.HasPrefix(link.Text(), "AS") {
-				rawNumber := link.Attrs()["href"][3:]
-				number, err := strconv.Atoi(rawNumber)
-				if err != nil {
-					slog.Error("Failed to parse ASN number: %s", err)
-					continue
-				}
-				out <- number
-			}
-		}
-	}()
-	return out
+type Search struct {
+	Name string `json:"name" bson:"name"`
+	ASNs []*ASN `json:"asns" bson:"asns"`
+}
+
+func (c *Search) String() string {
+	return fmt.Sprintf("%s: %v", c.Name, c.ASNs)
+}
+
+func NewSearch(name string) *Search {
+	s := &Search{
+		Name: name,
+		ASNs: []*ASN{},
+	}
+	for asn := range search(s.Name) {
+		s.ASNs = append(s.ASNs, asn)
+	}
+	return s
 }
 
 func search(keyword string) chan *ASN {
@@ -122,6 +96,32 @@ func search(keyword string) chan *ASN {
 				continue
 			}
 			out <- as
+		}
+	}()
+	return out
+}
+
+func parseASN(url string) chan int {
+	out := make(chan int)
+	go func() {
+		defer close(out)
+		resp, err := soup.Get(url)
+		if err != nil {
+			slog.Error("Failed to fetch URL: %s", err)
+			return
+		}
+		doc := soup.HTMLParse(resp)
+		links := doc.Find("div", "id", "search").FindAll("a")
+		for _, link := range links {
+			if strings.HasPrefix(link.Text(), "AS") {
+				rawNumber := link.Attrs()["href"][3:]
+				number, err := strconv.Atoi(rawNumber)
+				if err != nil {
+					slog.Error("Failed to parse ASN number: %s", err)
+					continue
+				}
+				out <- number
+			}
 		}
 	}()
 	return out
