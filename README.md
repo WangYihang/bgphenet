@@ -3,7 +3,7 @@
 ## Usage
 
 ```bash
-go get https://github.com/WangYihang/bgphenet
+go get github.com/WangYihang/bgphenet
 ```
 
 ```golang
