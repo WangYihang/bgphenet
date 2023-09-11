@@ -3,10 +3,19 @@
 ## Usage
 
 ```bash
-go get https://github.com/WangYihang/bgp.he.net/pkg/util
+go get https://github.com/WangYihang/bgphenet
 ```
 
 ```golang
-s := util.NewSearch("cloudflare")
-fmt.Println(s)
+package main
+
+import (
+    "fmt"
+    "github.com/WangYihang/bgphenet"
+)
+
+func main() {
+    s := bgphenet.Search("cloudflare")
+    fmt.Println(s)
+}
 ```
