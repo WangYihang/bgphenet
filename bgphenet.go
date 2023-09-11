@@ -37,6 +37,10 @@ func NewASN(number int) (*ASN, error) {
 		return nil, err
 	}
 	doc := soup.HTMLParse(resp)
+	if doc.Error != nil {
+		slog.Error("Failed to parse HTML: %s", err)
+		return nil, err
+	}
 	// Find IPv4 prefixes
 	ipv4div := doc.Find("div", "id", "prefixes")
 	if ipv4div.Error == nil {
@@ -111,7 +115,16 @@ func parseASN(url string) chan int {
 			return
 		}
 		doc := soup.HTMLParse(resp)
-		links := doc.Find("div", "id", "search").FindAll("a")
+		if doc.Error != nil {
+			slog.Error("Failed to parse HTML: %s", err)
+			return
+		}
+		searchdiv := doc.Find("div", "id", "search")
+		if searchdiv.Error != nil {
+			slog.Error("Failed to find search div: %s", err)
+			return
+		}
+		links := searchdiv.FindAll("a")
 		for _, link := range links {
 			if strings.HasPrefix(link.Text(), "AS") {
 				rawNumber := link.Attrs()["href"][3:]
