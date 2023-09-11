@@ -1,12 +1,3 @@
-# GoLang bindings for `bgp.he.net`
-
-## Usage
-
-```bash
-go get https://github.com/WangYihang/bgphenet
-```
-
-```golang
 package main
 
 import (
@@ -29,4 +20,3 @@ func main() {
 	fmt.Println(asn.IPv4Networks)
 	fmt.Println(asn.IPv6Networks)
 }
-```
