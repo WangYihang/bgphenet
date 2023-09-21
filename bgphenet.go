@@ -69,9 +69,9 @@ func (c *Search) String() string {
 	return fmt.Sprintf("%s: %v", c.Name, c.ASNs)
 }
 
-func NewSearch(name string) *Search {
+func NewSearch(keyword string) *Search {
 	s := &Search{
-		Name: name,
+		Name: keyword,
 		ASNs: []*ASN{},
 	}
 	for asn := range search(s.Name) {
@@ -80,20 +80,16 @@ func NewSearch(name string) *Search {
 	return s
 }
 
+// SearchASN searches for an ASN by keyword and returns a channel of ASN numbers
+func SearchASN(keyword string) chan int {
+	return parseASN(buildUrl(keyword))
+}
+
 func search(keyword string) chan *ASN {
 	out := make(chan *ASN)
 	go func() {
 		defer close(out)
-		url := url.URL{
-			Scheme: "https",
-			Host:   "bgp.he.net",
-			Path:   "/search",
-		}
-		query := url.Query()
-		query.Set("search[search]", keyword)
-		query.Set("commit", "Search")
-		url.RawQuery = query.Encode()
-		for asn := range parseASN(url.String()) {
+		for asn := range parseASN(buildUrl(keyword)) {
 			as, err := NewASN(asn)
 			if err != nil {
 				slog.Error("Failed to create ASN: %s", err)
@@ -103,6 +99,19 @@ func search(keyword string) chan *ASN {
 		}
 	}()
 	return out
+}
+
+func buildUrl(keyword string) string {
+	url := url.URL{
+		Scheme: "https",
+		Host:   "bgp.he.net",
+		Path:   "/search",
+	}
+	query := url.Query()
+	query.Set("search[search]", keyword)
+	query.Set("commit", "Search")
+	url.RawQuery = query.Encode()
+	return url.String()
 }
 
 func parseASN(url string) chan int {
