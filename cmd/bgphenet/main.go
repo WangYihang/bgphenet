@@ -2,17 +2,28 @@ package main
 
 import (
 	"encoding/json"
+	"os"
 
 	"github.com/WangYihang/bgphenet"
+	"github.com/jessevdk/go-flags"
 )
 
-func main() {
-	asn, err := bgphenet.NewASN(15169, false)
+type Options struct {
+	Keyword string `short:"k" long:"keyword" description:"keyword to search" required:"true"`
+}
+
+var opts Options
+
+func init() {
+	_, err := flags.Parse(&opts)
 	if err != nil {
-		panic(err)
+		os.Exit(1)
 	}
-	asn.LoadIPRanges()
-	data, err := json.Marshal(asn)
+}
+
+func main() {
+	search := bgphenet.NewSearch(opts.Keyword)
+	data, err := json.Marshal(search)
 	if err != nil {
 		panic(err)
 	}
