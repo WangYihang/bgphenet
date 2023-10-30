@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/anaskhan96/soup"
 )
@@ -16,6 +17,7 @@ type ASN struct {
 	Whois        string   `json:"whois" bson:"whois"`
 	IPv4Networks []string `json:"ipv4_networks" bson:"ipv4_networks"`
 	IPv6Networks []string `json:"ipv6_networks" bson:"ipv6_networks"`
+	UpdatedAt    int64    `json:"updated_at" bson:"updated_at"`
 }
 
 func (a *ASN) LoadIPRanges() error {
@@ -64,6 +66,22 @@ func (a *ASN) LoadIPRanges() error {
 	whoisDiv := doc.Find("div", "id", "whois")
 	whoisPre := whoisDiv.Find("pre")
 	a.Whois = whoisPre.Text()
+	// Find Updated
+	updatedDiv := doc.Find("div", "id", "footer")
+	a.UpdatedAt = time.Time{}.UnixMilli()
+	updatedStr := strings.TrimSpace(updatedDiv.Text())
+	if strings.HasPrefix(updatedStr, "Updated ") {
+		parts := strings.Split(updatedStr, " ©")
+		if len(parts) > 0 {
+			dateStr := parts[0]
+			updatedAt, err := time.Parse("Updated 02 Jan 2006 15:04 MST", dateStr)
+			if err != nil {
+				slog.Error("error occured while parsing date", slog.String("date", dateStr), slog.String("error", err.Error()))
+			} else {
+				a.UpdatedAt = updatedAt.UnixMilli()
+			}
+		}
+	}
 	return nil
 }
 
