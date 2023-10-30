@@ -12,11 +12,13 @@ import (
 
 type ASN struct {
 	Number       int      `json:"number" bson:"number"`
+	Name         string   `json:"name" bson:"name"`
+	Whois        string   `json:"whois" bson:"whois"`
 	IPv4Networks []string `json:"ipv4_networks" bson:"ipv4_networks"`
 	IPv6Networks []string `json:"ipv6_networks" bson:"ipv6_networks"`
 }
 
-func (a *ASN) Load() error {
+func (a *ASN) LoadIPRanges() error {
 	url := url.URL{
 		Scheme: "https",
 		Host:   "bgp.he.net",
@@ -32,22 +34,36 @@ func (a *ASN) Load() error {
 		slog.Error("Failed to parse HTML: %s", err)
 		return err
 	}
+	// Find Name
+	nameDiv := doc.Find("a", "rel", "bookmark")
+	junk := fmt.Sprintf("AS%d ", a.Number)
+	var name string
+	if strings.HasPrefix(nameDiv.Text(), junk) {
+		name = strings.TrimPrefix(nameDiv.Text(), junk)
+	} else {
+		name = nameDiv.Text()
+	}
+	a.Name = name
 	// Find IPv4 prefixes
-	ipv4div := doc.Find("div", "id", "prefixes")
-	if ipv4div.Error == nil {
-		ipv4links := ipv4div.FindAll("a")
-		for _, link := range ipv4links {
+	ipv4Div := doc.Find("div", "id", "prefixes")
+	if ipv4Div.Error == nil {
+		ipv4Links := ipv4Div.FindAll("a")
+		for _, link := range ipv4Links {
 			a.IPv4Networks = append(a.IPv4Networks, link.Text())
 		}
 	}
 	// Find IPv6 prefixes
-	ipv6div := doc.Find("div", "id", "prefixes6")
-	if ipv6div.Error == nil {
-		ipv6links := ipv6div.FindAll("a")
-		for _, link := range ipv6links {
+	ipv6Div := doc.Find("div", "id", "prefixes6")
+	if ipv6Div.Error == nil {
+		ipv6Links := ipv6Div.FindAll("a")
+		for _, link := range ipv6Links {
 			a.IPv6Networks = append(a.IPv6Networks, link.Text())
 		}
 	}
+	// Find Whois
+	whoisDiv := doc.Find("div", "id", "whois")
+	whoisPre := whoisDiv.Find("pre")
+	a.Whois = whoisPre.Text()
 	return nil
 }
 
@@ -62,7 +78,7 @@ func NewASN(number int, load bool) (*ASN, error) {
 		IPv6Networks: []string{},
 	}
 	if load {
-		err := asn.Load()
+		err := asn.LoadIPRanges()
 		if err != nil {
 			return nil, err
 		}
