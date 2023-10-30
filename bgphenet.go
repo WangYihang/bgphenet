@@ -16,37 +16,28 @@ type ASN struct {
 	IPv6Networks []string `json:"ipv6_networks" bson:"ipv6_networks"`
 }
 
-func (a *ASN) String() string {
-	return fmt.Sprintf("AS%d, IPv4: %v, IPv6: %v", a.Number, a.IPv4Networks, a.IPv6Networks)
-}
-
-func NewASN(number int) (*ASN, error) {
-	asn := &ASN{
-		Number:       number,
-		IPv4Networks: []string{},
-		IPv6Networks: []string{},
-	}
+func (a *ASN) Load() error {
 	url := url.URL{
 		Scheme: "https",
 		Host:   "bgp.he.net",
-		Path:   fmt.Sprintf("/AS%d", number),
+		Path:   fmt.Sprintf("/AS%d", a.Number),
 	}
 	resp, err := soup.Get(url.String())
 	if err != nil {
 		slog.Error("Failed to fetch URL: %s", err)
-		return nil, err
+		return err
 	}
 	doc := soup.HTMLParse(resp)
 	if doc.Error != nil {
 		slog.Error("Failed to parse HTML: %s", err)
-		return nil, err
+		return err
 	}
 	// Find IPv4 prefixes
 	ipv4div := doc.Find("div", "id", "prefixes")
 	if ipv4div.Error == nil {
 		ipv4links := ipv4div.FindAll("a")
 		for _, link := range ipv4links {
-			asn.IPv4Networks = append(asn.IPv4Networks, link.Text())
+			a.IPv4Networks = append(a.IPv4Networks, link.Text())
 		}
 	}
 	// Find IPv6 prefixes
@@ -54,7 +45,26 @@ func NewASN(number int) (*ASN, error) {
 	if ipv6div.Error == nil {
 		ipv6links := ipv6div.FindAll("a")
 		for _, link := range ipv6links {
-			asn.IPv6Networks = append(asn.IPv6Networks, link.Text())
+			a.IPv6Networks = append(a.IPv6Networks, link.Text())
+		}
+	}
+	return nil
+}
+
+func (a *ASN) String() string {
+	return fmt.Sprintf("AS%d, IPv4: %v, IPv6: %v", a.Number, a.IPv4Networks, a.IPv6Networks)
+}
+
+func NewASN(number int, load bool) (*ASN, error) {
+	asn := &ASN{
+		Number:       number,
+		IPv4Networks: []string{},
+		IPv6Networks: []string{},
+	}
+	if load {
+		err := asn.Load()
+		if err != nil {
+			return nil, err
 		}
 	}
 	return asn, nil
@@ -90,7 +100,7 @@ func search(keyword string) chan *ASN {
 	go func() {
 		defer close(out)
 		for asn := range parseASN(buildUrl(keyword)) {
-			as, err := NewASN(asn)
+			as, err := NewASN(asn, true)
 			if err != nil {
 				slog.Error("Failed to create ASN: %s", err)
 				continue

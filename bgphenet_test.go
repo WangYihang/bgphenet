@@ -15,7 +15,7 @@ func ExampleNewSearch() {
 
 func ExampleNewASN() {
 	// Create a new ASN
-	asn, err := bgphenet.NewASN(395747)
+	asn, err := bgphenet.NewASN(395747, true)
 	if err != nil {
 		fmt.Println(err)
 		return
